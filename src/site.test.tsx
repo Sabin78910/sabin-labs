@@ -57,15 +57,24 @@ describe("status", () => {
     expect(summary(["up", "down"]).label).toBe("1 of 2 systems need attention");
     expect(summary(["up", "checking"]).label).toBe("Checking systems…");
   });
-  it("probes with no-cors and reports failures", async () => {
-    let seen: RequestInit | undefined;
-    const ok = (async (_u: string, init?: RequestInit) => {
-      seen = init;
+  it("tries CORS first, falls back to no-cors, and reports failures", async () => {
+    const modes: string[] = [];
+    const corsOk = (async (_u: string, init?: RequestInit) => {
+      modes.push(String(init?.mode));
+      return new Response(null, { status: 200 });
+    }) as unknown as typeof fetch;
+    expect((await probe("https://example.test/", 1000, corsOk)).ok).toBe(true);
+    expect(modes).toEqual(["cors"]);
+    modes.length = 0;
+    const noCorsOnly = (async (_u: string, init?: RequestInit) => {
+      modes.push(String(init?.mode));
+      if (init?.mode === "cors") throw new TypeError("CORS blocked");
       return new Response(null);
     }) as unknown as typeof fetch;
-    const r = await probe("https://example.test/", 1000, ok);
-    expect(r.ok).toBe(true);
-    expect(seen).toMatchObject({ mode: "no-cors" });
+    expect((await probe("https://example.test/", 1000, noCorsOnly)).ok).toBe(true);
+    expect(modes).toEqual(["cors", "no-cors"]);
+    const serverError = (async () => new Response(null, { status: 503 })) as unknown as typeof fetch;
+    expect((await probe("https://example.test/", 1000, serverError)).ok).toBe(false);
     const fail = (async () => {
       throw new TypeError("network");
     }) as unknown as typeof fetch;

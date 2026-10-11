@@ -5,7 +5,7 @@ import type { Plugin } from "vite";
 
 /** Strict CSP, added to production builds only (the dev server injects inline scripts). */
 export const CSP =
-  "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; " +
+  "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; " +
   "img-src 'self' data:; connect-src 'self' https://*.sabin-apps.workers.dev https://sabin78910.github.io https://*.onrender.com; " +
   "base-uri 'self'; form-action 'self'; object-src 'none'";
 

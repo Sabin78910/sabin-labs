@@ -16,18 +16,26 @@ export function classify(p: Probe, slowMs = 2500): Exclude<Health, "checking" | 
 }
 
 /**
- * Pings a URL from the browser. Cross-origin endpoints don't all send CORS headers, so this uses
- * no-cors: an opaque response still proves the server answered; a network error means it didn't.
+ * Pings a URL from the browser. Tries a normal CORS request first (APIs that allow our origin, and
+ * ones whose Cross-Origin-Resource-Policy blocks opaque requests), then falls back to no-cors for
+ * endpoints without CORS headers: an opaque response still proves the server answered.
  */
 export async function probe(url: string, timeoutMs = 9000, fetchImpl: typeof fetch = fetch): Promise<Probe> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   const start = performance.now();
+  const done = (ok: boolean): Probe => ({ ok, ms: Math.round(performance.now() - start), timedOut: !ok && ctrl.signal.aborted });
   try {
-    await fetchImpl(url, { mode: "no-cors", cache: "no-store", signal: ctrl.signal });
-    return { ok: true, ms: Math.round(performance.now() - start), timedOut: false };
+    try {
+      const res = await fetchImpl(url, { mode: "cors", cache: "no-store", signal: ctrl.signal });
+      return done(res.status < 500);
+    } catch {
+      if (ctrl.signal.aborted) return done(false);
+      await fetchImpl(url, { mode: "no-cors", cache: "no-store", signal: ctrl.signal });
+      return done(true);
+    }
   } catch {
-    return { ok: false, ms: Math.round(performance.now() - start), timedOut: ctrl.signal.aborted };
+    return done(false);
   } finally {
     clearTimeout(timer);
   }
