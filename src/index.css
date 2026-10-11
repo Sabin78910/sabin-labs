@@ -11,6 +11,7 @@
   --glacier: #7cc4ff;
   --rose: #ff7a85;
   --amber: #ffc56b;
+  --amber-ink: #ffc56b;
   --ok: #4ade80;
   --warn: #fbbf24;
   --bad: #f87171;
@@ -37,6 +38,7 @@
     --ink: #0e1430;
     --muted: #4d5875;
     --glacier: #1b64d4;
+    --amber-ink: #9a4a0b;
     --ok: #15803d;
     --warn: #b45309;
     --bad: #b91c1c;
@@ -454,7 +456,7 @@ main {
   color: var(--muted);
 }
 .chip--sync {
-  color: var(--amber);
+  color: var(--amber-ink);
   border-color: color-mix(in srgb, var(--amber) 40%, transparent);
 }
 .card__links {
@@ -650,7 +652,7 @@ main {
 }
 .pipeline__n {
   font: 500 12px/1 var(--mono);
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 .pipeline h3 {
   font: 600 18px/1.2 var(--body);
