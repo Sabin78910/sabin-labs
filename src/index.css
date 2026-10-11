@@ -980,3 +980,16 @@ main {
     scroll-behavior: auto !important;
   }
 }
+
+/* Phones: the motion toggle sits under the call-to-action buttons instead of over the kicker. */
+@media (max-width: 699px) {
+  .hero {
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .motion-toggle {
+    position: static;
+    margin-top: 16px;
+  }
+}
