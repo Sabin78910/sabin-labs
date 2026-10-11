@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { appSyncState, codeLabel, createCode, eraseAll, readCode, saveCode, type AppSync } from "./account";
 import { byCategory, CATEGORIES, PRODUCTS, STATS, SYNC_APPS, type Product } from "./catalog";
-import { peakY, ridgePath } from "./ridges";
+import { readPaused, togglePaused, writePaused } from "./hero/pause";
+import { heroMode, readHeroEnv, ridgeHeight } from "./hero/support";
 import { classify, probe, summary, type Health } from "./status";
 import { parseSyncCode } from "./sync";
 
@@ -62,111 +63,139 @@ function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
   );
 }
 
-function Hero() {
-  const ridges = useMemo(
-    () => [
-      { d: ridgePath(11, 1440, 560, 300, 430, 0.58), cls: "r1" },
-      { d: ridgePath(23, 1440, 560, 360, 470, 0.55), cls: "r2" },
-      { d: ridgePath(37, 1440, 560, 420, 510, 0.5), cls: "r3" },
-      { d: ridgePath(51, 1440, 560, 480, 548, 0.45), cls: "r4" },
-    ],
+const LAYERS = [
+  { z: 1, base: 440, scale: 210, cls: "far" },
+  { z: 0.62, base: 490, scale: 160, cls: "mid" },
+  { z: 0.28, base: 545, scale: 110, cls: "near" },
+];
+
+/** Static range drawn from the same height function: the LCP-safe poster and the low-motion fallback. */
+function RidgePoster() {
+  const paths = useMemo(
+    () =>
+      LAYERS.map(({ z, base, scale, cls }) => {
+        const pts: string[] = [];
+        for (let i = 0; i <= 80; i++) {
+          const u = (i / 80) * 2 - 1;
+          pts.push(`${(i * 12.5).toFixed(1)},${(base - ridgeHeight(u, z) * scale).toFixed(1)}`);
+        }
+        return { cls, d: `M0,600 L${pts.join(" L")} L1000,600 Z` };
+      }),
     [],
   );
-  const glowY = peakY(ridges[0].d);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (reduceMotion()) return;
-    const el = ref.current;
-    if (!el) return;
-    const onMove = (e: PointerEvent) => {
-      const x = e.clientX / window.innerWidth - 0.5;
-      el.style.setProperty("--px", x.toFixed(3));
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
-  }, []);
   return (
-    <header className="hero" ref={ref}>
-      <svg className="hero__art" viewBox="0 0 1440 560" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-        <defs>
-          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="var(--sky-top)" />
-            <stop offset="0.55" stopColor="var(--sky-mid)" />
-            <stop offset="1" stopColor="var(--sky-low)" />
-          </linearGradient>
-          <radialGradient id="glow" cx="0.5" cy="0" r="0.6">
-            <stop offset="0" stopColor="#FFC56B" stopOpacity="0.55" />
-            <stop offset="1" stopColor="#FF7A85" stopOpacity="0" />
-          </radialGradient>
-          <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#FFE3C4" />
-            <stop offset="0.25" stopColor="#F2B8B0" />
-            <stop offset="1" stopColor="var(--ridge-1)" />
-          </linearGradient>
-        </defs>
-        <rect width="1440" height="560" fill="url(#sky)" />
-        <g className="stars">
-          {Array.from({ length: 60 }, (_, i) => (
-            <circle key={i} cx={(i * 211) % 1440} cy={(i * 97) % 220} r={i % 7 === 0 ? 1.6 : 0.9} style={{ animationDelay: `${(i % 9) * 0.4}s` }} />
-          ))}
-        </g>
-        <ellipse cx="720" cy={glowY} rx="620" ry="260" fill="url(#glow)" />
-        {ridges.map((r, i) => (
-          <path key={r.cls} d={r.d} className={`ridge ${r.cls}`} fill={i === 0 ? "url(#snow)" : undefined} />
-        ))}
-      </svg>
+    <svg className="hero-poster" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false">
+      {paths.map((p) => (
+        <path key={p.cls} className={`ridge ridge-${p.cls}`} d={p.d} />
+      ))}
+    </svg>
+  );
+}
+
+function Topbar() {
+  return (
+    <header className="topbar">
+      <a className="brand" href="#top" aria-label="Sabin Labs home">
+        <span className="brand__mark" aria-hidden="true">
+          SL
+        </span>
+        <span className="brand__name">Sabin Labs</span>
+      </a>
       <nav className="nav" aria-label="Main">
-        <a className="brand" href="#top" aria-label="Sabin Labs home">
-          <Logo />
-          <span>Sabin Labs</span>
+        <a href="#products">Products</a>
+        <a href="#platform">Platform</a>
+        <a href="#company">Company</a>
+        <a href="#status">Status</a>
+        <a className="nav-cta" href="#account">
+          Sabin Labs ID
         </a>
-        <div className="nav__links">
-          <a href="#products">Products</a>
-          <a href="#platform">Platform</a>
-          <a href="#company">Company</a>
-          <a href="#status">Status</a>
-          <a className="nav__cta" href="#account">
-            Sabin Labs ID
-          </a>
-        </div>
       </nav>
-      <div className="hero__copy" id="top">
-        <p className="eyebrow">Kathmandu · Software for everyone</p>
-        <h1>
-          Built in the Himalaya.
-          <br />
-          <em>Made for the world.</em>
-        </h1>
-        <p className="lede">
-          Fifteen fast, fair and beautiful products: games, money, news and productivity. One encrypted account links them all,
-          and an automated engineering platform ships improvements every day.
-        </p>
-        <div className="hero__ctas">
-          <a className="btn btn--primary" href="#products">
-            Explore the products
-          </a>
-          <a className="btn btn--ghost" href="#account">
-            Get your Sabin Labs ID
-          </a>
-        </div>
-      </div>
     </header>
   );
 }
 
-function Logo() {
+function Hero() {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [count, setCount] = useState(0);
+  const [paused, setPaused] = useState(readPaused);
+  const handle = useRef<{ setPaused(p: boolean): void } | null>(null);
+  const pausedRef = useRef(paused);
+  useEffect(() => {
+    if (heroMode(readHeroEnv()) !== "webgl") return;
+    let dead = false;
+    let destroy = () => {};
+    const start = () =>
+      import("./hero/ridge").then(({ startRidge }) => {
+        if (dead || !canvas.current) return;
+        const h = startRidge(canvas.current);
+        if (h) {
+          destroy = h.destroy;
+          handle.current = h;
+          h.setPaused(pausedRef.current);
+          setCount(h.count);
+        }
+      });
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(start);
+    else setTimeout(start, 150);
+    return () => {
+      dead = true;
+      destroy();
+    };
+  }, []);
+  const onToggle = () => {
+    const next = togglePaused(paused);
+    pausedRef.current = next;
+    setPaused(next);
+    writePaused(next);
+    handle.current?.setPaused(next);
+  };
   return (
-    <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
-      <defs>
-        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FFC56B" />
-          <stop offset="1" stopColor="#FF7A85" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="9" fill="var(--logo-bg)" />
-      <path d="M4 24 L12 11 L16 17 L20 9 L28 24 Z" fill="url(#lg)" />
-      <path d="M17.6 13 L20 9 L22.3 13 L20 12 Z" fill="#fff" opacity="0.9" />
-    </svg>
+    <section className="hero" aria-label="Introduction" id="top">
+      <canvas ref={canvas} className="hero-canvas" aria-hidden="true" />
+      <RidgePoster />
+      <div className="blob blob-violet" aria-hidden="true" />
+      <div className="blob blob-cyan" aria-hidden="true" />
+      <div className="hero-inner">
+        <p className="kicker">
+          <span className="dot" aria-hidden="true" /> Software company · Kathmandu, Nepal
+        </p>
+        <h1>Sabin Labs</h1>
+        <p className="tagline">Built in the Himalaya. Made for the world.</p>
+        <p className="hero-sub">
+          Fifteen fast, fair and beautiful products: games, money, news and productivity. One encrypted account links them all,
+          and an automated engineering platform ships improvements every day.
+        </p>
+        <div className="cta">
+          <a className="btn" href="#products">
+            Explore the products
+          </a>
+          <a className="btn btn-ghost" href="#account">
+            Get your Sabin Labs ID
+          </a>
+        </div>
+      </div>
+      {count > 0 && (
+        <button type="button" className="btn btn-ghost motion-toggle" aria-pressed={paused} onClick={onToggle}>
+          {paused ? "Play motion" : "Pause motion"}
+        </button>
+      )}
+    </section>
+  );
+}
+
+function StatsStrip() {
+  return (
+    <div className="stats" role="list" aria-label="Sabin Labs at a glance">
+      {STATS.map((s) => (
+        <div key={s.label} className="stat" role="listitem">
+          <strong>
+            <CountUp to={s.value} suffix={"suffix" in s ? s.suffix : ""} />
+          </strong>
+          <span>{s.label}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -450,16 +479,6 @@ function Platform() {
           </li>
         ))}
       </ol>
-      <div className="stats">
-        {STATS.map((s) => (
-          <div key={s.label} className="stat">
-            <strong>
-              <CountUp to={s.value} suffix={"suffix" in s ? s.suffix : ""} />
-            </strong>
-            <span>{s.label}</span>
-          </div>
-        ))}
-      </div>
     </section>
   );
 }
@@ -549,8 +568,10 @@ export default function App() {
       <a className="skip" href="#products">
         Skip to products
       </a>
-      <Hero />
+      <Topbar />
       <main>
+        <Hero />
+        <StatsStrip />
         <Products health={health} />
         <Account />
         <Platform />
