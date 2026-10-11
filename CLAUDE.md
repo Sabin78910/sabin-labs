@@ -10,7 +10,8 @@ Purpose: the company site and hub for every Sabin Labs product: product suite, S
 - src/catalog.ts: single source of truth for all products (add new products here).
 - src/status.ts: live health probes (no-cors) and status summary. src/account.ts: Sabin Labs ID (shared localStorage key `sabin-labs-sync-code`, per-app sync state, erase).
 - src/sync.ts: copied unchanged from Sabin78910/sync-api client/sync.ts.
-- src/ridges.ts: procedural hero mountains. src/App.tsx: sections. CSP is added at build time in vite.config.ts.
+- src/hero/: the founder particle-Himalaya hero (raw WebGL + static SVG poster), shared with portfolio-web. src/theme.ts mirrors the system theme to <html data-theme>.
+- Design system = the founder site's (portfolio-web): #07070C base, violet #7C3AED, cyan #22D3EE, Space Grotesk + Inter (self-hosted). src/App.tsx: sections. CSP is added at build time in vite.config.ts.
 
 ## Rules
 - Read only the files you need. Every behavior change needs a test. Run tests and lint before finishing.

@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import App from "./App";
 import { appSyncState, codeLabel, eraseAll, readCode, saveCode, SHARED_CODE_KEY } from "./account";
 import { byCategory, CATEGORIES, PRODUCTS, SYNC_APPS } from "./catalog";
-import { peakY, ridgePath } from "./ridges";
 import { classify, probe, summary } from "./status";
 import { newSyncCode, parseSyncCode } from "./sync";
+import { resolveTheme } from "./theme";
 
 function memStorage() {
   const m = new Map<string, string>();
@@ -136,14 +136,10 @@ describe("Sabin Labs ID", () => {
   });
 });
 
-describe("ridges", () => {
-  it("is deterministic and stays inside its band", () => {
-    const a = ridgePath(11, 1440, 560, 150, 330);
-    expect(a).toBe(ridgePath(11, 1440, 560, 150, 330));
-    expect(a).not.toBe(ridgePath(12, 1440, 560, 150, 330));
-    expect(a.startsWith("M0,560")).toBe(true);
-    expect(peakY(a)).toBeGreaterThanOrEqual(150);
-    expect(peakY(a)).toBeLessThanOrEqual(330);
+describe("theme", () => {
+  it("maps the system preference to data-theme", () => {
+    expect(resolveTheme(true)).toBe("light");
+    expect(resolveTheme(false)).toBe("dark");
   });
 });
 
@@ -154,7 +150,7 @@ describe("site", () => {
   afterEach(() => vi.unstubAllGlobals());
   it("renders the hero, every product, the account and status sections", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Built in the Himalaya");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sabin Labs");
     for (const p of PRODUCTS) expect(screen.getAllByRole("heading", { name: p.name }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Create my Sabin Labs ID" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /systems/i })).toBeInTheDocument();
