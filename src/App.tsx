@@ -9,6 +9,31 @@ import { parseSyncCode } from "./sync";
 const storage = typeof localStorage !== "undefined" ? localStorage : undefined;
 const reduceMotion = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/** Product deep links: #product/<id> focuses and scrolls to one card. */
+export function parseProductHash(hash: string): string | null {
+  const m = /^#\/?product\/([a-z0-9-]+)$/i.exec(hash);
+  return m ? m[1].toLowerCase() : null;
+}
+
+function useProductHash(): string | null {
+  const [focused, setFocused] = useState<string | null>(() => parseProductHash(window.location.hash));
+  useEffect(() => {
+    const onHash = () => setFocused(parseProductHash(window.location.hash));
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  return focused;
+}
+
+function useScrollToProduct(focused: string | null) {
+  useEffect(() => {
+    if (!focused) return;
+    const el = document.getElementById(`product-${focused}`);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: reduceMotion() ? "auto" : "smooth" });
+  }, [focused]);
+}
+
 function useHealth(): Record<string, Health> {
   const [health, setHealth] = useState<Record<string, Health>>(() =>
     Object.fromEntries(PRODUCTS.map((p) => [p.id, p.health ? "checking" : "n/a"])),
@@ -216,9 +241,9 @@ function StatusDot({ h }: { h: Health }) {
   );
 }
 
-function ProductCard({ p, h }: { p: Product; h: Health }) {
+function ProductCard({ p, h, focused }: { p: Product; h: Health; focused?: boolean }) {
   return (
-    <article className={`card${p.featured ? " card--featured" : ""}`}>
+    <article id={`product-${p.id}`} className={`card${p.featured ? " card--featured" : ""}${focused ? " card--focused" : ""}`}>
       <div className="card__media" style={{ ["--accent" as string]: p.accent }}>
         {p.shot ? (
           <img src={p.shot} alt={`${p.name} screenshot`} loading="lazy" decoding="async" />
@@ -249,6 +274,9 @@ function ProductCard({ p, h }: { p: Product; h: Health }) {
             {p.syncId && <span className="chip chip--sync">Sabin Labs ID</span>}
           </span>
           <span className="card__links">
+            <a href={`#/product/${p.id}`} aria-label={`Focus ${p.name}`}>
+              Link
+            </a>
             {p.url && (
               <a href={p.url} target="_blank" rel="noopener">
                 Open ↗
@@ -264,10 +292,11 @@ function ProductCard({ p, h }: { p: Product; h: Health }) {
   );
 }
 
-function Products({ health }: { health: Record<string, Health> }) {
+function Products({ health, focused }: { health: Record<string, Health>; focused: string | null }) {
   const [cat, setCat] = useState<"All" | (typeof CATEGORIES)[number]>("All");
   const groups = byCategory();
   const list = cat === "All" ? PRODUCTS : groups.get(cat)!;
+  useScrollToProduct(focused);
   return (
     <section id="products" className="section" aria-labelledby="products-h">
       <p className="eyebrow">The suite</p>
@@ -285,7 +314,7 @@ function Products({ health }: { health: Record<string, Health> }) {
       </div>
       <div className="grid">
         {list.map((p) => (
-          <ProductCard key={p.id} p={p} h={health[p.id]} />
+          <ProductCard key={p.id} p={p} h={health[p.id]} focused={focused === p.id} />
         ))}
       </div>
     </section>
@@ -563,6 +592,7 @@ function Status({ health }: { health: Record<string, Health> }) {
 
 export default function App() {
   const health = useHealth();
+  const focused = useProductHash();
   return (
     <>
       <a className="skip" href="#products">
@@ -572,7 +602,7 @@ export default function App() {
       <main>
         <Hero />
         <StatsStrip />
-        <Products health={health} />
+        <Products health={health} focused={focused} />
         <Account />
         <Platform />
         <Company />
